@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /c/Users/agagguturi/nca-submission/venv/Scripts/python*)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pip list:*)",
+      "Bash(tasklist)",
+      "Bash(source /c/Users/agagguturi/nca-submission/venv/Scripts/activate)",
+      "Bash(pip show:*)",
+      "Bash(pip install:*)"
+    ]
+  }
+}
