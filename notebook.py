@@ -79,10 +79,12 @@ def _(mo):
 def _(mo):
     mo.Html("""
     <div class="prose" style="text-align:center; margin-top: 2rem;">
-      <div class="chapter">A notebook</div>
+      <div class="chapter">A notebook · after Mordvintsev et al. (2020)</div>
       <div class="h1">The Language of Life</div>
-      <div style="color:#aab8cc; font-style:italic;">
-        On Neural Cellular Automata &middot; after Mordvintsev et al.
+      <div style="color:#aab8cc; font-style:italic; max-width:520px;
+                  margin:0.5rem auto 0;">
+        How ~3,000 numbers learn to grow, regenerate, and — when you
+        damage them — decide what to become again.
       </div>
     </div>
     """)
@@ -125,7 +127,7 @@ def _(F, Path, nn, np, torch):
         CHANNEL_N, GRID_SIZE, HIDDEN = 16, 40, 128
 
     class NCA(nn.Module):
-        """A cell is a 16-dim vector. The network is the laws of its physics."""
+        """A cell is a small vector. The network is the laws of its physics."""
 
         def __init__(self, n_channels=CHANNEL_N, hidden=HIDDEN, fire_rate=0.5):
             super().__init__()
@@ -292,7 +294,7 @@ def _(GRID_SIZE, Image, base64, img_tag, io, mo, np):
     _buf = io.BytesIO()
     _bg.save(_buf, format='PNG')
     _src = 'data:image/png;base64,' + base64.b64encode(_buf.getvalue()).decode()
-    mo.Html(img_tag(_src, caption='a seed — one cell in a 40×40 void'))
+    mo.Html(img_tag(_src, caption='a seed — one cell in a 32×32 void'))
     return
 
 
@@ -300,8 +302,8 @@ def _(GRID_SIZE, Image, base64, img_tag, io, mo, np):
 def _(mo):
     mo.Html("""
     <div class="prose">
-      <p>The dot is a vector: sixteen numbers. Three of them will become color.
-      One is alpha — a commitment to exist. The other twelve are hidden
+      <p>The dot is a vector: twelve numbers. Three of them will become color.
+      One is alpha — a commitment to exist. The other eight are hidden
       state: a little private world the cell can use to think.</p>
       <p>It has no memory of what it's supposed to become.</p>
       <p>It has no neighbors yet. Just itself, and the rules.</p>
@@ -413,10 +415,10 @@ def _(
     _m = MODELS[_target]
     _x = make_seed()
     with torch.no_grad():
-        _, _traj = _m(_x, steps=96, return_trajectory=True)
-    _src = frames_to_gif_b64(_traj[::3], scale=10, duration=70)
+        _, _traj = _m(_x, steps=55, return_trajectory=True)
+    _src = frames_to_gif_b64(_traj[:36:2], scale=10, duration=70)
     mo.Html(img_tag(_src, caption=f'trained: one seed → an entire {_target}. '
-                                   '~250,000 parameters, 96 steps.'))
+                                   '~3,000 parameters, no architect.'))
     return
 
 
@@ -433,6 +435,8 @@ def _(mo):
       <p style="text-align:center; font-style:italic; color:#ffd78a;
                 font-size:1.15rem; margin: 1.5rem 0;">
         Global form can arise from purely local communication.</p>
+      <p>This network is <em>three thousand numbers</em>. A tweet is longer.
+      And yet it knows, in the way a seed knows, how to become a lizard.</p>
     </div>
     """)
     return
@@ -442,9 +446,11 @@ def _(mo):
 def _(mo):
     mo.Html('<div class="prose"><div class="chapter">Chapter IV</div>'
             '<div class="h1" style="font-size:2rem;">Becoming</div>'
-            '<p>Pick a target. Each of these was trained from scratch — same '
-            'architecture, same 16 channels, but a different destiny folded '
-            'into 250,000 numbers.</p></div>')
+            '<p>Each of these was trained from scratch — same architecture, '
+            'same twelve channels per cell, but a different destiny folded '
+            'into just <em>~3,000 numbers</em>. That is smaller than a single '
+            'pixel row of a phone photograph. And yet it holds enough '
+            'instruction for a body to grow.</p></div>')
     return
 
 
@@ -481,6 +487,68 @@ def _(
     _src = frames_to_gif_b64(_sub, scale=10, duration=70)
     mo.Html(img_tag(_src,
         caption=f'{target_picker.value} · {steps_slider.value} steps'))
+    return
+
+
+@app.cell
+def _(mo):
+    mo.Html("""
+    <div class="prose">
+      <div class="chapter">An experiment the paper doesn't run</div>
+      <div class="h1" style="font-size:2rem;">What if we planted two?</div>
+      <p>The rule is purely local. Each cell only asks its neighbors how
+      they're doing. The network has no concept of <em>a body</em>. It has
+      no concept of <em>one</em>.</p>
+      <p>So what happens if we give it two seeds, side by side? It was
+      never trained on this. It has no idea what you want.</p>
+    </div>
+    """)
+    return
+
+
+@app.cell
+def _(
+    AVAILABLE_TARGETS,
+    GRID_SIZE,
+    MODELS,
+    frames_to_gif_b64,
+    img_tag,
+    mo,
+    torch,
+):
+    _target = 'lizard' if 'lizard' in AVAILABLE_TARGETS else AVAILABLE_TARGETS[0]
+    _m = MODELS[_target]
+
+    # Two seeds, placed symmetrically
+    _x = torch.zeros(1, _m.n_channels, GRID_SIZE, GRID_SIZE)
+    _x[:, 3:, GRID_SIZE // 2, GRID_SIZE // 3]         = 1.0
+    _x[:, 3:, GRID_SIZE // 2, 2 * GRID_SIZE // 3]     = 1.0
+
+    # Give both bodies time to form — longer than a single-seed run
+    _steps = 97 if _target == 'heart' else 60
+    with torch.no_grad():
+        _, _traj = _m(_x, steps=_steps, return_trajectory=True)
+
+    _src = frames_to_gif_b64(_traj[::max(1, len(_traj) // 36)],
+                             scale=10, duration=80, loop_delay=1800)
+    mo.Html(img_tag(_src,
+        caption='two seeds · one rule · the network has never seen this'))
+    return
+
+
+@app.cell
+def _(mo):
+    mo.Html("""
+    <div class="prose">
+      <p>It grows two. Imperfectly — the bodies bend toward each other, argue
+      at the border, sometimes fuse. But the rules never <em>decided</em>
+      there should be two. They just kept asking neighbors. Twice as many
+      conversations, twice as many bodies.</p>
+      <p>This is the paper's claim taken seriously: the shape is not stored
+      in the network. The shape is what happens when enough cells run the
+      same conversation long enough to agree.</p>
+    </div>
+    """)
     return
 
 
@@ -536,10 +604,11 @@ def _(
 
     _m = MODELS[heal_target.value]
 
-    # First: grow the organism to maturity
+    # First: grow the organism to maturity (step count that looks best per target)
     _x = make_seed()
+    _grow_steps = 97 if heal_target.value == 'heart' else 35
     with torch.no_grad():
-        _x = _m(_x, steps=96)
+        _x = _m(_x, steps=_grow_steps)
 
     # Now: injure it, visibly.
     _before_damage = _x.clone()
@@ -558,10 +627,10 @@ def _(
 
     # Heal: run the same network forward. Nothing tells it to heal.
     with torch.no_grad():
-        _, _heal_traj = _m(_x, steps=80, return_trajectory=True)
+        _, _heal_traj = _m(_x, steps=60, return_trajectory=True)
 
     # Build the story-frames: mature → damage → healing
-    _story = [_before_damage, _before_damage, _x, _x] + _heal_traj[::2]
+    _story = [_before_damage, _before_damage, _x, _x] + _heal_traj[:50:2]
     _src = frames_to_gif_b64(_story, scale=10, duration=80, loop_delay=1800)
     mo.Html(img_tag(_src,
         caption='mature → injury → recovery · the same network, no instruction'))
@@ -588,8 +657,8 @@ def _(mo):
     <div class="prose">
       <div class="chapter">An original contribution</div>
       <div class="h1" style="font-size:2rem;">The sound of thinking</div>
-      <p>The network has 16 channels per cell, but only the first 4 are
-      visible to us — R, G, B, and alpha. The other 12 are where the <em>thinking</em>
+      <p>The network has 12 channels per cell, but only the first 4 are
+      visible to us — R, G, B, and alpha. The other 8 are where the <em>thinking</em>
       happens. They don't look like anything. Nobody sees them.</p>
       <p>I want you to see them.</p>
       <p>Below: the same healing process, but this time with channel 4 shown
@@ -616,14 +685,15 @@ def _(
     _m = MODELS[_target]
 
     _x = make_seed()
+    _grow_steps = 97 if _target == 'heart' else 35
     with torch.no_grad():
-        _x = _m(_x, steps=96)
+        _x = _m(_x, steps=_grow_steps)
     # Cut in half — maximally dramatic
     _x[:, :, :, :GRID_SIZE // 2] = 0
     with torch.no_grad():
-        _, _traj = _m(_x, steps=80, return_trajectory=True)
+        _, _traj = _m(_x, steps=60, return_trajectory=True)
 
-    _src = render_side_by_side(_traj[::2], _traj[::2], scale=8, duration=85)
+    _src = render_side_by_side(_traj[:50:2], _traj[:50:2], scale=8, duration=85)
     mo.Html(img_tag(_src, max_width=680,
         caption='left: what we see · right: what the organism is "thinking" '
                 '(hidden channel 4)'))
@@ -698,9 +768,10 @@ def _(
     _m = MODELS[play_target.value]
     _x = make_seed()
 
-    # Grow to maturity first
+    # Grow to maturity first (step count that looks best per target)
+    _grow_steps = 97 if play_target.value == 'heart' else 35
     with torch.no_grad():
-        _, _grow = _m(_x, steps=96, return_trajectory=True,
+        _, _grow = _m(_x, steps=_grow_steps, return_trajectory=True,
                       fire_rate=float(play_fire.value))
     _x = _grow[-1]
 
@@ -740,9 +811,11 @@ def _(mo):
     <div class="prose" style="margin-top: 4rem;">
       <div class="chapter">Try it yourself</div>
       <div class="h1" style="font-size:2rem;">Draw the wound</div>
-      <p>Pick an organism below. It will grow to maturity. Then
-      <em>paint directly on it</em> with your mouse to erase cells — as many or
-      as few as you like. Hit <strong>heal</strong> and watch it decide what to do.</p>
+      <p>Preset injuries are one thing. But the network has never seen the
+      damage you're about to give it. Pick an organism below — it will
+      appear fully grown. <em>Paint directly on it</em> with your mouse to
+      erase whatever cells you like. Then hit <strong>heal</strong> and
+      watch what it decides to do.</p>
     </div>
     """)
     return
@@ -756,10 +829,11 @@ def _():
     class _PW(anywidget.AnyWidget):
         _esm = """
         function render({ model, el }) {
+            el.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;';
             const SCALE = 10, G = 32;
             const canvas = document.createElement('canvas');
             canvas.width = G * SCALE; canvas.height = G * SCALE;
-            canvas.style.cssText = 'cursor:crosshair;image-rendering:pixelated;border:1px solid #2a3a5a;border-radius:4px;display:block;';
+            canvas.style.cssText = 'cursor:crosshair;image-rendering:pixelated;border:1px solid #2a3a5a;border-radius:4px;display:block;margin:0 auto;';
             const ctx = canvas.getContext('2d');
             const painted = new Set();
 
@@ -813,11 +887,11 @@ def _():
 
             const hint = document.createElement('p');
             hint.textContent = 'paint to damage  →  then click heal';
-            hint.style.cssText = 'font-size:0.8rem;color:#8fa3bd;font-style:italic;margin:0 0 8px 0;font-family:Inter,system-ui,sans-serif;';
+            hint.style.cssText = 'font-size:0.8rem;color:#8fa3bd;font-style:italic;margin:0 0 8px 0;font-family:Inter,system-ui,sans-serif;text-align:center;display:block;';
 
             const clearBtn = document.createElement('button');
             clearBtn.textContent = 'clear damage';
-            clearBtn.style.cssText = 'margin-top:8px;padding:4px 12px;font-size:0.75rem;cursor:pointer;background:#0d1117;color:#8fa3bd;border:1px solid #2a3a5a;border-radius:4px;';
+            clearBtn.style.cssText = 'margin-top:8px;padding:4px 12px;font-size:0.75rem;cursor:pointer;background:#0d1117;color:#8fa3bd;border:1px solid #2a3a5a;border-radius:4px;display:block;margin-left:auto;margin-right:auto;';
             clearBtn.onclick = () => { painted.clear(); model.set('mask', []); model.save_changes(); redraw(); };
 
             el.appendChild(hint);
@@ -860,10 +934,11 @@ def _(
     to_rgba_img,
     torch,
 ):
-    # Grow to maturity so the canvas always shows a fully-grown organism
+    # Grow to maturity — stop before model drifts into instability
     _seed = make_seed()
+    _grow_steps = 97 if draw_target.value == 'heart' else 35
     with torch.no_grad():
-        _grown = MODELS[draw_target.value](_seed, steps=96)
+        _grown = MODELS[draw_target.value](_seed, steps=_grow_steps)
 
     # Render to PNG base64 for the canvas widget
     _arr = to_rgba_img(_grown[0])
@@ -879,9 +954,9 @@ def _(
     draw_grown_np = _grown.detach().numpy()
 
     mo.vstack([
-        mo.hstack([draw_target, draw_heal_btn], justify='start', gap=2),
+        mo.hstack([draw_target, draw_heal_btn], justify='center', gap=2),
         draw_widget,
-    ])
+    ], align='center')
     return draw_grown_np, draw_widget
 
 
@@ -914,10 +989,10 @@ def _(
 
     _before = torch.from_numpy(draw_grown_np.copy())
     with torch.no_grad():
-        _, _traj = _m(_x, steps=96, return_trajectory=True)
+        _, _traj = _m(_x, steps=40, return_trajectory=True)
 
-    _frames = [_before, _before, _x, _x] + _traj[::2]
-    _src = frames_to_gif_b64(_frames, scale=10, duration=80, loop_delay=2000)
+    _frames = [_before, _before, _x, _x, _x] + _traj[::1]
+    _src = frames_to_gif_b64(_frames, scale=10, duration=140, loop_delay=2200)
     mo.Html(img_tag(_src, caption='your damage · their recovery'))
     return
 
@@ -930,9 +1005,9 @@ def _(mo):
       <div class="h1" style="font-size:2rem;">What was this?</div>
 
       <p>Nothing in this notebook is alive. There are no cells, no membranes,
-      no DNA. Just numbers — sixteen floating-point values per pixel, updated
-      by a tiny neural network — simulating something that looks
-      <em>awfully</em> like life.</p>
+      no DNA. Just numbers — twelve floating-point values per pixel, updated
+      by a tiny neural network with about <em>three thousand parameters</em>
+      — simulating something that looks <em>awfully</em> like life.</p>
 
       <p>And yet: a seed grows. An injury heals. Local rules, repeated
       everywhere, produce global order. No architect. No blueprint. No one in
@@ -953,10 +1028,14 @@ def _(mo):
 
     <div class="prose" style="margin-top: 3rem; font-size:0.85rem;
                               color:#7891a8; text-align:center;">
-      <p>Based on "Growing Neural Cellular Automata" (Mordvintsev, Randazzo,
-      Niklasson & Levin, 2020). Extension — latent channel visualization during
-      healing — is original to this notebook. Built with marimo and PyTorch.
-      All models trained from scratch on Nebius GPU.</p>
+      <p>Based on "Growing Neural Cellular Automata"<br>
+      Mordvintsev · Randazzo · Niklasson · Levin (Distill, 2020).</p>
+      <p style="margin-top:0.75rem;">Three extensions are original to this
+      notebook: a <em>two-seed probe</em> that tests a question the paper
+      doesn't ask, a side-by-side <em>latent channel</em> visualization so
+      you can watch signals travel through the body during healing, and an
+      interactive <em>paint-your-own-wound</em> widget. Built with marimo,
+      PyTorch, and anywidget. All models trained from scratch on CPU.</p>
     </div>
     """)
     return
